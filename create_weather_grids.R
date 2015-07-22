@@ -8,6 +8,7 @@ directories<-list.dirs('c:/Spatial_Data/Climate/New Zealand/csv_files/') # get d
 directories<-directories[-1] # remove first directory
 
 for(i in 1:length(directories)){
+  i<-38
   files<-list.files(directories[i]) # get all file names in current directory (year)
   
   
@@ -28,8 +29,13 @@ for(i in 1:length(directories)){
     gridout <- raster(ncol=quadwid, nrow=quadlen, xmn=lon1, xmx=lon2, ymn=lat1, ymx=lat2)
     
     x<-cbind(alldata[,3],alldata[,2]) # list of co-ordinates
-    vals <- cbind(alldata[,3],alldata[,2],alldata[,(5:15)]) # list of coordinates and variables
-    grid <- stack(rasterize(x, gridout, vals[,3:13])) # grid of all variables
+    if(as.numeric(substr(files[j],1,4))>1996){ # 
+     vals <- cbind(alldata[,3],alldata[,2],alldata[,(5:15)]) # list of coordinates and variables
+     grid <- stack(rasterize(x, gridout, vals[,3:13])) # grid of all variables
+    }else{
+     vals <- cbind(alldata[,3],alldata[,2],alldata[,(5:14)]) # list of coordinates and variables
+     grid <- stack(rasterize(x, gridout, vals[,3:12])) # grid of all variables 
+    }
     
     # stacking all days together
     if(j==1){
@@ -54,7 +60,7 @@ for(i in 1:length(directories)){
       SoilM<-stack(SoilM,grid[[5]])
       ETmp<-stack(ETmp,grid[[6]])
       Rad<-stack(Rad,grid[[7]])
-      Tmax<-stack(TMax,grid[[8]])
+      Tmax<-stack(Tmax,grid[[8]])
       Tmin<-stack(Tmin,grid[[9]])
       VP<-stack(VP,grid[[10]])
       if(as.numeric(substr(files[j],1,4))>1996){
@@ -68,21 +74,18 @@ for(i in 1:length(directories)){
   
   # create a stack for writing output
   if(as.numeric(substr(files[j],1,4))>1996){
-    rasters<-stack(MSLP,Pet,Rain,RH,SoilM,ETmp,Rad,TMax,Tmin,VP,Wind)
-    a<-14
+    a<-11
   }else{
-    rasters<-stack(MSLP,Pet,Rain,RH,SoilM,ETmp,Rad,TMax,Tmin,VP)
-    a<-13
+    a<-10
   }
   filenames<-paste('weather/',substr(files[j],1,4),"_",variables,".nc",sep="")
   
   # write rasters, re-open and add in dates, then close again
   for(m in 1:a){ 
-    writeRaster(rasters[[m]], filename=filenames[m], overwrite=TRUE)
+    eval(parse(text=paste("writeRaster(",variables[m],", filename=filenames[m], overwrite=TRUE)",sep="")))
     data<-open.ncdf( filenames[m], write=TRUE, readunlim=TRUE)
     put.var.ncdf( data, varid='z', vals=dates)
     close.ncdf(data)  
   }
-  
   
 } # end loop through years
