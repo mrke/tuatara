@@ -7,8 +7,8 @@ tzone<-paste("Etc/GMT+",12,sep="") # doing it this way ignores daylight savings!
 directories<-list.dirs('c:/Spatial_Data/Climate/New Zealand/csv_files/') # get directories (years) to loop through
 directories<-directories[-1] # remove first directory
 
-for(i in 1:length(directories)){
-  i<-38
+for(i in 19:37){
+  #i<-38
   files<-list.files(directories[i]) # get all file names in current directory (year)
   
   
