@@ -113,14 +113,14 @@ function [Prd_data, info] = predict_Niveoscincus_ocellatus(par, chem, T_ref, dat
   p_ref = p_Am * L_m^2;               % J/d, max assimilation power at max size
   pars_power = [kap; kap_R; g; k_J; k_M; L_T; v; U_Hb; U_Hp];
 
-  L = (0.86/ d_V/ (1 + f * w)).^(1/3); % cm, structural length, use dry mass for 2.87 g wet mass
+  L = (5.67/ d_V/ (1 + f * w)).^(1/3); % cm, structural length, use dry mass for 18.9 g wet mass
   pACSJGRD = p_ref * scaled_power(L, f, pars_power, l_b, l_p);
   pADG = pACSJGRD(:, [1 7 5]);  pADG(:,1) = 0; % exclude assim contribution
   JM = pADG * eta_O' * O2M;                     % mol/d, mineral fluxes
   %EO = - 24.4e3/ 24 * JM(:,3);                  % ml/h, O_2 consumption
   %X_gas = (0.082058*(TO(:,1)+273.15))/(0.082058*293.15)*24.06;  % gas correction factor
   X_gas = (0.082058*(20+273.15))/(0.082058*293.15)*24.06;  % gas correction factor
-  EO = (- 1 * (JM(:,3) * X_gas) .* tempcorr(273+TO(:,1), T_ref, pars_T))/2.87/24*1000;
+  EO = (- 1 * (JM(:,3) * X_gas) .* tempcorr(273+TO(:,1), T_ref, pars_T))/18.9/24*1000;
 
   %% pack to output
   % the names of the fields in the structure must be the same as the data names in the mydata file
