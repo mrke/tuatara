@@ -21,18 +21,18 @@
 # zoo
 # RODBC
 
-spatial<-"weather/" # place where climate input files are kept
+spatial<-"/Spatial_Data/Climate/New Zealand/weather/" # place where climate input files are kept
 mac<-0
 
 ############## location and climatic data  ###################################
-sitemethod <- 1 # 0=specified single site long/lat, 1=place name search using geodis (needs internet)
-longlat<-c(173.82,-40.823) #central plateau c(146.5666667,-41.85) Orford c(147.829971,-42.557127) 
+sitemethod <- 0 # 0=specified single site long/lat, 1=place name search using geodis (needs internet)
+longlat<-c(173.82,-40.823) # Stephens Island: c(173.82,-40.823)
 loc <- "Arthurs Pass, New Zealand" # type in a location here, used if option 1 is chosen above
 terrain<-0 # include terrain (slope, aspect, horizon angles) (1) or not (0)?
 soildata<-0 # include soil data for New Zealand (1) or not (0)?
 snowmodel<-0 # run snow version? (slower!)
-ystart <- 2013# start year for weather generator calibration dataset or AWAP database
-yfinish <- 2013# end year for weather generator calibration dataset
+ystart <- 2010# start year for weather generator calibration dataset or AWAP database
+yfinish <- 2012# end year for weather generator calibration dataset
 nyears<-yfinish-ystart+1# integer, number of years for which to run the microclimate model, only for AWAP data (!!max 10 years!!)
 
 ############# microclimate model parameters ################################
@@ -90,24 +90,28 @@ undercatch<-1.2 # undercatch multipier for converting rainfall to snow
 rainmelt<-0.013 # paramter in equation that melts snow with rainfall as a function of air tempwrite_input<-1 # write csv files of final input to working directory? 1=yes, 0=no.
 warm<-0 # uniform warming of air temperature input to simulate climate change
 loop<-0 # if doing multiple years, this shifts the starting year by the integer value
-write_input<-1 # write csv files of final input to working directory? 1=yes, 0=no.
+write_input<-0 # write csv files of final input to working directory? 1=yes, 0=no.
 
 # run the model
 niche<-list(mac=mac,L=L,LAI=LAI,SoilMoist_Init=SoilMoist_Init,evenrain=evenrain,runmoist=runmoist,maxpool=maxpool,PE=PE,KS=KS,BB=BB,BD=BD,loop=loop,warm=warm,rainwet=rainwet,manualshade=manualshade,terrain=terrain,soildata=soildata,loc=loc,ystart=ystart,yfinish=yfinish,nyears=nyears,RUF=RUF,SLE=SLE,ERR=ERR,DEP=DEP,Thcond=Thcond,Density=Density,SpecHeat=SpecHeat,BulkDensity=BulkDensity,Clay=Clay,SatWater=SatWater,SoilMoist=SoilMoist,CMH2O=CMH2O,TIMAXS=TIMAXS,TIMINS=TIMINS,minshade=minshade,maxshade=maxshade,Usrhyt=Usrhyt,REFL=REFL,slope=slope,aspect=aspect,hori=hori,cap=cap,write_input=write_input,spatial=spatial,snowmodel=snowmodel,snowtemp=snowtemp,snowdens=snowdens,snowmelt=snowmelt,undercatch=undercatch,rainmelt=rainmelt,rainmult=rainmult,runshade=runshade)
 source('microclimates/NicheMapR_setup_micro_NZdaily.R')
 nicheout<-NicheMapR(niche)
 
+tzone<-paste("Etc/GMT-12",sep="") # doing it this way ignores daylight savings!
+dates2<-seq(ISOdate(ystart,1,1,tz=tzone)-3600*12, ISOdate((ystart+nyears),1,1,tz=tzone)-3600*13, by="days") 
+ndays<-length(dates2)
+
 # get output
-metout<-as.data.frame(nicheout$metout[1:(365*24*nyears),]) # above ground microclimatic conditions, min shade
-shadmet<-as.data.frame(nicheout$shadmet[1:(365*24*nyears),]) # above ground microclimatic conditions, max shade
-soil<-as.data.frame(nicheout$soil[1:(365*24*nyears),]) # soil temperatures, minimum shade
-shadsoil<-as.data.frame(nicheout$shadsoil[1:(365*24*nyears),]) # soil temperatures, maximum shade
-soilmoist<-as.data.frame(nicheout$soilmoist[1:(365*24*nyears),]) # soil water content, minimum shade
-shadmoist<-as.data.frame(nicheout$shadmoist[1:(365*24*nyears),]) # soil water content, maximum shade
-humid<-as.data.frame(nicheout$humid[1:(365*24*nyears),]) # soil humidity, minimum shade
-shadhumid<-as.data.frame(nicheout$shadhumid[1:(365*24*nyears),]) # soil humidity, maximum shade
-soilpot<-as.data.frame(nicheout$soilpot[1:(365*24*nyears),]) # soil water potential, minimum shade
-shadpot<-as.data.frame(nicheout$shadpot[1:(365*24*nyears),]) # soil water potential, maximum shade
+metout<-as.data.frame(nicheout$metout[1:(ndays*24),]) # above ground microclimatic conditions, min shade
+shadmet<-as.data.frame(nicheout$shadmet[1:(ndays*24),]) # above ground microclimatic conditions, max shade
+soil<-as.data.frame(nicheout$soil[1:(ndays*24),]) # soil temperatures, minimum shade
+shadsoil<-as.data.frame(nicheout$shadsoil[1:(ndays*24),]) # soil temperatures, maximum shade
+soilmoist<-as.data.frame(nicheout$soilmoist[1:(ndays*24),]) # soil water content, minimum shade
+shadmoist<-as.data.frame(nicheout$shadmoist[1:(ndays*24),]) # soil water content, maximum shade
+humid<-as.data.frame(nicheout$humid[1:(ndays*24),]) # soil humidity, minimum shade
+shadhumid<-as.data.frame(nicheout$shadhumid[1:(ndays*24),]) # soil humidity, maximum shade
+soilpot<-as.data.frame(nicheout$soilpot[1:(ndays*24),]) # soil water potential, minimum shade
+shadpot<-as.data.frame(nicheout$shadpot[1:(ndays*24),]) # soil water potential, maximum shade
 rainfall<-as.data.frame(nicheout$RAINFALL)
 MAXSHADES<-as.data.frame(nicheout$MAXSHADES)
 elev<-as.numeric(nicheout$ALTT)
@@ -127,15 +131,7 @@ write.csv(ectoin,'microclimates/micro output/ectoin.csv')
 write.csv(DEP,'microclimates/micro output/DEP.csv')
 write.csv(MAXSHADES,'microclimates/micro output/MAXSHADES.csv')
 
-if(!require(geonames)){
-  stop('package "geonames" is required.')
-}
-tzone<-paste("Etc/GMT-10",sep="") # doing it this way ignores daylight savings!
-
 dates<-seq(ISOdate(ystart,1,1,tz=tzone)-3600*12, ISOdate((ystart+nyears),1,1,tz=tzone)-3600*13, by="hours") 
-dates<-subset(dates, format(dates, "%m/%d")!= "02/29") # remove leap years
-dates<-subset(dates, !duplicated(as.matrix(dates[2110:2120])))
-dates<-unique(dates)
 metout<-cbind(dates,metout)
 shadmet<-cbind(dates,shadmet)
 soil<-cbind(dates,soil)
@@ -147,13 +143,11 @@ shadhumid<-cbind(dates,shadhumid)
 soilpot<-cbind(dates,soilpot)
 shadpot<-cbind(dates,shadpot)
 
-dates2<-seq(ISOdate(ystart,1,1,tz=tzone)-3600*12, ISOdate((ystart+nyears),1,1,tz=tzone)-3600*13, by="days") 
-dates2<-subset(dates2, format(dates2, "%m/%d")!= "02/29") # remove leap years
 rainfall<-as.data.frame(cbind(dates2,rainfall))
 colnames(rainfall)<-c('dates','rainfall')
 
-dstart<-as.POSIXct(as.Date('01/01/2013', "%d/%m/%Y"))-3600*11
-dfinish<-as.POSIXct(as.Date('31/12/2013', "%d/%m/%Y"))-3600*10
+dstart<-as.POSIXct(as.Date(paste('01/01/',ystart,sep=""), "%d/%m/%Y"))-3600*11
+dfinish<-as.POSIXct(as.Date(paste('31/12/',yfinish,sep=""), "%d/%m/%Y"))-3600*10
 plotsoil<-subset(soil,  soil$dates > dstart & soil$dates < dfinish )
 plotmetout<-subset(metout,  metout$dates > dstart & metout$dates < dfinish )
 

@@ -110,7 +110,7 @@ wetmod<-0 # run the wetland model?
 soilmoisture<-0 # run the soil moisture model? (models near-surface soil moisture rather than a pond as a function of field capacity and wilting point)
 
 # which energy budget model to use? 
-DEB<-0 # run the DEB model (1) or just heat balance, using allometric respiration below (0)
+DEB<-1 # run the DEB model (1) or just heat balance, using allometric respiration below (0)
 
 # parameters for allometric model of respiration, for use in heat budget when DEB model is not
 # run so that metabolic heat generation and respiratory water loss can be calculated.
@@ -341,24 +341,18 @@ library(lattice)
 # first plot observed vs predicted SVL vs. time
 plot(debout$SVL~debout$dates,type='l',ylim=c(20,75)) # predicted SVL vs time
 
-Growth<-read.csv('life history/N_ocellatus_Orford_growth.csv') # read in first dataset
-Growth$date<-as.POSIXct(Growth$date,format='%d/%m/%Y') # convert dates
-points(Growth$SVL~Growth$date,col='red') # plot results
-
-Growth_skeleto<-read.csv('life history/N_ocellatus_Orford_growth_skeleto.csv') # bring in second dataset
-Growth_skeleto<-subset(Growth_skeleto,site=='Orford' & sex!='m') # choose site and sex
-#Growth_skeleto<-subset(Growth_skeleto,site=='CP' & sex!='m') # choose site and sex
-Growth_skeleto$date<-as.POSIXct(Growth_skeleto$date,format='%d/%m/%Y') # convert dates
-points(Growth_skeleto$svl~Growth_skeleto$date,col='blue') # plot results
+#Growth<-read.csv('life history/N_ocellatus_Orford_growth.csv') # read in first dataset
+#Growth$date<-as.POSIXct(Growth$date,format='%d/%m/%Y') # convert dates
+#points(Growth$SVL~Growth$date,col='red') # plot results
 
 # plot activity windows
 plotenviron<-subset(environ,YEAR<3) #choose time period
 forage<-subset(plotenviron,ACT==2) # get foraging times
 bask<-subset(plotenviron,ACT==1) # get basking times
 night<-subset(metout,ZEN==90) # get night period
-with(forage,plot((TIME-1)~DAY,pch=15,cex=.5,col='blue',ylab='hour of day',ylim=c(0,23),xlab='day of year')) # plot foraging
+with(night,plot(TIME/60~JULDAY,pch=15,cex=1)) # plot night hours
+with(forage,points((TIME-1)~DAY,pch=15,cex=.5,col='light blue',ylab='hour of day',ylim=c(0,23),xlab='day of year')) # plot foraging
 with(bask,points((TIME-1)~DAY,pch=15,cex=.5,col='grey')) # plot basking
-with(night,points(TIME/60~JULDAY,pch=15,cex=.5)) # plot night hours
 
 
 # plot mass and reproduction phenology

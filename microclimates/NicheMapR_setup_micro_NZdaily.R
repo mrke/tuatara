@@ -235,6 +235,8 @@ NicheMapR <- function(niche) {
     ################## end loading packages ###################################
     
     timeinterval<-365 # number of time intervals to generate predictions for over a year (must be 12 <= x <=365)
+    tzone<-paste("Etc/GMT-12",sep="") # doing it this way ignores daylight savings!
+    daystorun<-length(seq(ISOdate(ystart,1,1,tz=tzone)-3600*12, ISOdate((ystart+nyears),1,1,tz=tzone)-3600*13, by="days"))
     juldays12<-c(15.,46.,74.,105.,135.,166.,196.,227.,258.,288.,319.,349.)
     juldaysn<-juldays12
     if(nyears>1){ # create sequence of days for splining across multiple years
@@ -245,14 +247,14 @@ NicheMapR <- function(niche) {
     daystart<-1
     dates<-Sys.time()-60*60*24
     curyear<-as.numeric(format(dates,"%Y"))
-    REFL<-rep(REFL,timeinterval*nyears) # soil reflectances
-    SoilMoist<-rep(SoilMoist,timeinterval*nyears)
+    REFL<-rep(REFL,daystorun) # soil reflectances
+    SoilMoist<-rep(SoilMoist,daystorun)
     Density<-Density/1000 # density of minerals - convert to Mg/m3
     BulkDensity<-BulkDensity/1000 # density of minerals - convert to Mg/m3
     if(soildata==0){
       soilprop<-cbind(0,0)
-      maxshades <- rep(maxshade,365*nyears)
-      minshades <- rep(minshade,365*nyears)
+      maxshades <- rep(maxshade,daystorun)
+      minshades <- rep(minshade,daystorun)
     }
     pctwet_mult<-0#0.01 # factor by which uppper soil wetness is multiplied to get surface %wet for evaporative cooling
     
@@ -271,10 +273,24 @@ NicheMapR <- function(niche) {
     #utm<-project(x, paste("+proj=NZTM +",hemisph," +zone=",UTMzone," ellps=WGS84",sep=""))
     
     
-    r1<-raster('weather/nz_geo3_km.asc')
-    utm<-project(x, "+proj=tmerc +lat_0=0.0 +lon_0=173.0 +k=0.9996 +x_0=1600000.0 +y_0=10000000.0 +datum=WGS84 +units=m")
-    elevslpasphori<-as.numeric(extract(stack(paste(spatial,"elevslpasphori.nc",sep="")),utm))  
+    r1<-raster(paste(spatial,'nz_geo3_km.asc',sep=""))
+    NZDEM<-extract(r1,x)*1000
+    
+    utm<-project(as.matrix(x), "+proj=tmerc +lat_0=0.0 +lon_0=173.0 +k=0.9996 +x_0=1600000.0 +y_0=10000000.0 +datum=WGS84 +units=m")
+    nc<-open.ncdf(paste(spatial,"elevslpasphori.nc",sep=""))
+    easting<-get.var.ncdf(nc,"easting")
+    northing<-get.var.ncdf(nc,"northing")
+    dist1<-abs(easting-utm[1])
+    index1<-which.min(dist1)
+    dist2<-abs(northing-utm[2])
+    index2<-which.min(dist2)
+    start<-c(index1,index2,1)
+    count<-c(1,1,-1)
+    elevslpasphori<-as.numeric(get.var.ncdf(nc,varid="variable",start=start,count=count))
+    close.ncdf(nc) 
+    
     ALTITUDES <- elevslpasphori[1]
+    if(is.na(ALTITUDES)==TRUE){ALTITUDES<-NZDEM}
   
     if(terrain==1){
       cat("extracting terrain data")
@@ -288,22 +304,7 @@ NicheMapR <- function(niche) {
       # in the east and goes counter clockwise!
       HORIZONS <- (ifelse(is.na(HORIZONS),0,HORIZONS))/10 # get rid of na and get back to floating point
       HORIZONS <- data.frame(HORIZONS)
-      VIEWF_all <- 1-rowSums(sin(t(HORIZONS)*pi/180))/length(t(HORIZONS)) # convert horizon angles to radians and calc view factor(s)
-      r1 <- raster(f1)
-      r2 <- raster(f2)
-      r3 <- raster(f3)
-      dbrow <- extract(r1, x)
-      NZDEM <- extract(r2, x)
-      AGG <- extract(r3, x)
     }else{
-      #       r1 <- raster(f1)
-      #       r2 <- raster(f2)
-      #       r3 <- raster(f3)
-      #       r4 <- raster(f4)
-      #      dbrow <- extract(r1, x)
-      NZDEM <- extract(r1, x)*1000
-      AGG <- 0#extract(r3, x)
-      #cat("using 0.05 res DEM!")
       HORIZONS <- hori
       HORIZONS <- data.frame(HORIZONS)
       VIEWF_all <- rep(1,length(x[,1]))
@@ -322,23 +323,19 @@ NicheMapR <- function(niche) {
     }
     
     # setting up for temperature correction using lapse rate given difference between 9sec DEM value and 0.05 deg value
-    if(NZDEM==-9999 | is.na(NZDEM)=='TRUE'){
-      delta_elev = AGG - ALTITUDES
-    }else{
-      delta_elev = NZDEM - ALTITUDES
-    }
+#     if(NZDEM==-9999 | is.na(NZDEM)=='TRUE'){
+#       delta_elev = AGG - ALTITUDES
+#     }else{
+       delta_elev = NZDEM - ALTITUDES
+#     }
     adiab_corr = delta_elev * 0.0058 # Adiabatic temperature correction for elevation (C), mean for Australian Alps
     adiab_corr_max = delta_elev * 0.0077 # Adiabatic temperature correction for elevation (C), mean for Australian Alps
     adiab_corr_min = delta_elev * 0.0039 # Adiabatic temperature correction for elevation (C), mean for Australian Alps
     
-    # read daily climate
-    
-    
-    
-    
+    # read daily weather
     yearlist<-seq(ystart,(ystart+(nyears-1)),1)
     for(j in 1:nyears){ # start loop through years
-      cat('reading weather input \n')
+      cat(paste('reading weather input for ',yearlist[j],' \n',sep=""))
       lon_1<-as.numeric(longlat[1])
       lat_1<-as.numeric(longlat[2])
       lat<-read.csv('ncdf_lat.csv')[,2]
@@ -351,7 +348,6 @@ NicheMapR <- function(niche) {
       count<-c(1,1,-1)
       
       if(j==1){
-        Tmax<-as.numeric(extract(stack(paste(spatial,yearlist[j],'_Tmax.nc',sep="")),x))
         Tmax<-as.numeric(get.var.ncdf(open.ncdf(paste(spatial,yearlist[j],'_Tmax.nc',sep="")),varid="variable",start=start,count))
         Tmin<-as.numeric(get.var.ncdf(open.ncdf(paste(spatial,yearlist[j],'_Tmin.nc',sep="")),varid="variable",start=start,count))
         VP<-as.numeric(get.var.ncdf(open.ncdf(paste(spatial,yearlist[j],'_VP.nc',sep="")),varid="variable",start=start,count))
@@ -371,10 +367,7 @@ NicheMapR <- function(niche) {
     } 
     
     
-    nyears2<-length(Tmax)/365
     ndays<-length(Tmax)
-    juldaysn2<-juldaysn[juldaysn<=ndays]
-    juldaysn2<-juldaysn[1:round(nyears2*12)]
     julnum<-ndays
     juldays<-seq(daystart,julnum,1)
     julday <- subset(juldays, juldays!=0)
@@ -508,7 +501,7 @@ NicheMapR <- function(niche) {
           }
         }
         
-        REFLS <- (1:(timeinterval*nyears))*0+REFL
+        REFLS <- (1:(daystorun))*0+REFL
         if((soildata==1)&(length(RAINFALL)>0)){
           soilwet<-RAINFALL
           soilwet[soilwet<=rainwet] = 0 
@@ -517,8 +510,8 @@ NicheMapR <- function(niche) {
           #PCTWET <- uppermoists*soilprop$A_01bar*pctwet_mult*100
           PCTWET<-pmax(soilwet,PCTWET)
         }else{
-          REFLS <- (1:(timeinterval*nyears))*0+REFL
-          PCTWET <- (1:(timeinterval*nyears))*0+PCTWET
+          REFLS <- (1:(daystorun))*0+REFL
+          PCTWET <- (1:(daystorun))*0+PCTWET
           soilwet<-RAINFALL
           soilwet[soilwet<=rainwet] = 0 
           soilwet[soilwet>0] = 90
@@ -565,7 +558,11 @@ NicheMapR <- function(niche) {
         AMINUT <- (abs(x[2])-ALAT)*60
         ALONG <- abs(trunc(x[1]))
         ALMINT <- (abs(x[1])-ALONG)*60
-        ALTT<-ALTITUDES
+        if(adiab_cor==1){
+          ALTT<-ALTITUDES
+        }else{
+          ALTT<-NZDEM
+        }
         SLOPE<-SLOPES
         AZMUTH<-AZMUTHS 
         
@@ -614,7 +611,7 @@ NicheMapR <- function(niche) {
         WNMINN<-WNMINN*(1.2/2)^0.15
         
         
-        SNOW <- rep(0,timeinterval*nyears) # no snow simulated on surface
+        SNOW <- rep(0,daystorun) # no snow simulated on surface
         
         # impose uniform warming
         TMAXX<-TMAXX+warm
@@ -629,7 +626,7 @@ NicheMapR <- function(niche) {
         
         if(runmoist==1){
           if(timeinterval==365){
-            moists2<-matrix(nrow=10, ncol = 365*20, data=0) # set up an empty vector for soil moisture values through time
+            moists2<-matrix(nrow=10, ncol = daystorun, data=0) # set up an empty vector for soil moisture values through time
           }else{
             moists2<-matrix(nrow=10, ncol = timeinterval, data=0) # set up an empty vector for soil moisture values through time
           }
