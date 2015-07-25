@@ -288,17 +288,25 @@ source('NicheMapR_Setup_ecto.R')
 nicheout<-NicheMapR_ecto(niche)
 setwd(project.dir)
 
+tzone<-paste("Etc/GMT-12",sep="") # doing it this way ignores daylight savings!
+dates2<-seq(ISOdate(ystart,1,1,tz=tzone)-3600*12, ISOdate((ystart+nyears),1,1,tz=tzone)-3600*13, by="days") 
+dates2<-subset(dates2, format(dates2, "%m/%d")!= "02/29") # remove leap years
+dates<-seq(ISOdate(ystart,1,1,tz=tzone)-3600*12, ISOdate((ystart+nyears),1,1,tz=tzone)-3600*13, by="hours")
+dates<-subset(dates, format(dates, "%m/%d")!= "02/29") # remove leap years
+
+ndays<-length(dates2)
+
 # retrieve output
-metout<-as.data.frame(nicheout$metout)[1:(nyears*365*24),]
-shadmet<-as.data.frame(nicheout$shadmet)[1:(nyears*365*24),]
-soil<-as.data.frame(nicheout$soil)[1:(nyears*365*24),]
-shadsoil<-as.data.frame(nicheout$shadsoil)[1:(nyears*365*24),]
+metout<-as.data.frame(nicheout$metout)[1:(ndays*24),]
+shadmet<-as.data.frame(nicheout$shadmet)[1:(ndays*24),]
+soil<-as.data.frame(nicheout$soil)[1:(ndays*24),]
+shadsoil<-as.data.frame(nicheout$shadsoil)[1:(ndays*24),]
 rainfall<-as.data.frame(nicheout$RAINFALL)
 grassgrowths<-as.data.frame(nicheout$grassgrowths)
 grasstsdms<-as.data.frame(nicheout$grasstsdms)
-environ<-as.data.frame(nicheout$environ[1:(365*24*nyears),])
-enbal<-as.data.frame(nicheout$enbal[1:(365*24*nyears),])
-masbal<-as.data.frame(nicheout$masbal[1:(365*24*nyears),])
+environ<-as.data.frame(nicheout$environ[1:(ndays*24),])
+enbal<-as.data.frame(nicheout$enbal[1:(ndays*24),])
+masbal<-as.data.frame(nicheout$masbal[1:(ndays*24),])
 
 yearout<-as.data.frame(nicheout$yearout)
 if(nyears>1){
@@ -312,9 +320,6 @@ if(container==1){
 }
 
 # append dates
-tzone<-paste("Etc/GMT-",10,sep="") # doing it this way ignores daylight savings!
-dates<-seq(ISOdate(ystart,1,1,tz=tzone)-3600*12, ISOdate((ystart+nyears),1,1,tz=tzone)-3600*13, by="hours")
-dates<-subset(dates, format(dates, "%m/%d")!= "02/29") # remove leap years
 if(DEB==1){
   debout<-as.data.frame(nicheout$debout[1:(365*24*nyears),])
   debout<-cbind(dates,debout)
@@ -327,8 +332,6 @@ metout<-cbind(dates,metout)
 shadsoil<-cbind(dates,shadsoil)
 shadmet<-cbind(dates,shadmet)
 
-dates2<-seq(ISOdate(ystart,1,1,tz=tzone)-3600*12, ISOdate((ystart+nyears),1,1,tz=tzone)-3600*13, by="days") 
-dates2<-subset(dates2, format(dates2, "%m/%d")!= "02/29") # remove leap years
 grass<-cbind(dates2,grassgrowths,grasstsdms)
 colnames(grass)<-c("dates","growth","tsdm")
 rainfall<-as.data.frame(cbind(dates2,rainfall))
@@ -339,14 +342,18 @@ colnames(rainfall)<-c("dates","rainfall")
 library(lattice)
 
 # first plot observed vs predicted SVL vs. time
-plot(debout$SVL~debout$dates,type='l',ylim=c(20,75)) # predicted SVL vs time
+plot(debout$SVL~debout$dates,type='l') # predicted SVL vs time
+Growth<-read.csv("morphology/Dawbin's_SVL_extracted.csv") # read in first dataset
+Growth$Date<-Growth$Age_days*3600*24+dates[1]
+points(Growth$SVL~Growth$Date,col='red') # plot results
 
-#Growth<-read.csv('life history/N_ocellatus_Orford_growth.csv') # read in first dataset
+plot(debout$WETMASS~debout$dates,type='l') # predicted SVL vs time
+
 #Growth$date<-as.POSIXct(Growth$date,format='%d/%m/%Y') # convert dates
 #points(Growth$SVL~Growth$date,col='red') # plot results
 
 # plot activity windows
-plotenviron<-subset(environ,YEAR<3) #choose time period
+plotenviron<-subset(environ,YEAR<20) #choose time period
 forage<-subset(plotenviron,ACT==2) # get foraging times
 bask<-subset(plotenviron,ACT==1) # get basking times
 night<-subset(metout,ZEN==90) # get night period
@@ -368,7 +375,7 @@ abline(v=year_vals$dates,col='grey',lty=2) # add lines to show beginning of each
 plot(debout$V_baby~debout$dates,type='l', ylab='embryo structure (cm3)',xlab="date") # plot embryo development (volume of structure)
 
 # plot thermoregulation
-subdate<-subset(environ, format(environ$dates,"%y/%m")=="13/07") # use this to subset a particular year and month
+subdate<-subset(environ, format(environ$dates,"%y/%m")=="00/07") # use this to subset a particular year and month
 #subdate<-environ # just use the whole data set
 with(subdate, plot(TC~dates,ylim=c(-15,50),type = "l",col='blue')) # plot Tb
 with(subdate, points(ACT*5~dates,type = "l",col='pink')) # plot activity

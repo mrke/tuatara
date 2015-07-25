@@ -31,8 +31,8 @@ loc <- "Arthurs Pass, New Zealand" # type in a location here, used if option 1 i
 terrain<-0 # include terrain (slope, aspect, horizon angles) (1) or not (0)?
 soildata<-0 # include soil data for New Zealand (1) or not (0)?
 snowmodel<-0 # run snow version? (slower!)
-ystart <- 2010# start year for weather generator calibration dataset or AWAP database
-yfinish <- 2012# end year for weather generator calibration dataset
+ystart <- 1997# start year for weather generator calibration dataset or AWAP database
+yfinish <- 2001# end year for weather generator calibration dataset
 nyears<-yfinish-ystart+1# integer, number of years for which to run the microclimate model, only for AWAP data (!!max 10 years!!)
 
 ############# microclimate model parameters ################################
@@ -100,6 +100,9 @@ nicheout<-NicheMapR(niche)
 tzone<-paste("Etc/GMT-12",sep="") # doing it this way ignores daylight savings!
 dates2<-seq(ISOdate(ystart,1,1,tz=tzone)-3600*12, ISOdate((ystart+nyears),1,1,tz=tzone)-3600*13, by="days") 
 ndays<-length(dates2)
+dates<-seq(ISOdate(ystart,1,1,tz=tzone)-3600*12, ISOdate((ystart+nyears),1,1,tz=tzone)-3600*13, by="hours") 
+leap1<-(format(dates2, "%m/%d")!= "02/29") # used for removing leap years
+leap2<-(format(dates, "%m/%d")!= "02/29") # used for removing leap years
 
 # get output
 metout<-as.data.frame(nicheout$metout[1:(ndays*24),]) # above ground microclimatic conditions, min shade
@@ -122,16 +125,16 @@ wilting<-0.11 # soil moisture at node 3 that means no food available
 ectoin<-c(elev,REFL,as.numeric(longlat[1]),as.numeric(longlat[2]),fieldcap,wilting,ystart,yfinish)
 longlat<-nicheout$longlat
 
-write.csv(metout,'microclimates/micro output/metout.csv')
-write.csv(shadmet,'microclimates/micro output/shadmet.csv')
-write.csv(soil,'microclimates/micro output/soil.csv')
-write.csv(shadsoil,'microclimates/micro output/shadsoil.csv')
-write.csv(rainfall,'microclimates/micro output/rainfall.csv')
+# write ouput for ectotherm model (note, removing leap years because at the moment the ectotherm model doesn't handle them)
+write.csv(metout[leap2,],'microclimates/micro output/metout.csv')
+write.csv(shadmet[leap2,],'microclimates/micro output/shadmet.csv')
+write.csv(soil[leap2,],'microclimates/micro output/soil.csv')
+write.csv(shadsoil[leap2,],'microclimates/micro output/shadsoil.csv')
+write.csv(rainfall[leap1,],'microclimates/micro output/rainfall.csv')
 write.csv(ectoin,'microclimates/micro output/ectoin.csv')
 write.csv(DEP,'microclimates/micro output/DEP.csv')
 write.csv(MAXSHADES,'microclimates/micro output/MAXSHADES.csv')
 
-dates<-seq(ISOdate(ystart,1,1,tz=tzone)-3600*12, ISOdate((ystart+nyears),1,1,tz=tzone)-3600*13, by="hours") 
 metout<-cbind(dates,metout)
 shadmet<-cbind(dates,shadmet)
 soil<-cbind(dates,soil)

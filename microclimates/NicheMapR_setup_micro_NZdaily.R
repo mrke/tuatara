@@ -353,19 +353,35 @@ NicheMapR <- function(niche) {
         VP<-as.numeric(get.var.ncdf(open.ncdf(paste(spatial,yearlist[j],'_VP.nc',sep="")),varid="variable",start=start,count))
         Rain<-as.numeric(get.var.ncdf(open.ncdf(paste(spatial,yearlist[j],'_Rain.nc',sep="")),varid="variable",start=start,count))
         SoilM<-as.numeric(get.var.ncdf(open.ncdf(paste(spatial,yearlist[j],'_SoilM.nc',sep="")),varid="variable",start=start,count))
-        Rad<-as.numeric(get.var.ncdf(open.ncdf(paste(spatial,yearlist[j],'_Rad.nc',sep="")),varid="variable",start=start,count))
         Wind<-as.numeric(get.var.ncdf(open.ncdf(paste(spatial,yearlist[j],'_Wind.nc',sep="")),varid="variable",start=start,count))
+        clear<-as.numeric(get.var.ncdf(open.ncdf(paste(spatial,'clearsky.nc',sep="")),varid="variable",start=start,count))
+        Rad<-as.numeric(get.var.ncdf(open.ncdf(paste(spatial,yearlist[j],'_Rad.nc',sep="")),varid="variable",start=start,count))
+        if(length(Rad)==366){# add day for leap year if needed
+          clear<-c(clear[1:59],clear[59],clear[60:365])
+        }
+        cloud<-(1-Rad/clear)*100  
+        cloud[cloud<0]<-0
+        cloud[cloud>100]<-100
+        CCMAXX<-as.numeric(cloud)
       }else{
         Tmax<-as.numeric(c(Tmax,get.var.ncdf(open.ncdf(paste(spatial,yearlist[j],'_Tmax.nc',sep="")),varid="variable",start=start,count)))
         Tmin<-as.numeric(c(Tmin,get.var.ncdf(open.ncdf(paste(spatial,yearlist[j],'_Tmin.nc',sep="")),varid="variable",start=start,count)))
         VP<-as.numeric(c(VP,get.var.ncdf(open.ncdf(paste(spatial,yearlist[j],'_VP.nc',sep="")),varid="variable",start=start,count)))
         Rain<-as.numeric(c(Rain,get.var.ncdf(open.ncdf(paste(spatial,yearlist[j],'_Rain.nc',sep="")),varid="variable",start=start,count)))
         SoilM<-as.numeric(c(SoilM,get.var.ncdf(open.ncdf(paste(spatial,yearlist[j],'_SoilM.nc',sep="")),varid="variable",start=start,count)))
-        Rad<-as.numeric(c(Rad,get.var.ncdf(open.ncdf(paste(spatial,yearlist[j],'_Rad.nc',sep="")),varid="variable",start=start,count)))
         Wind<-as.numeric(c(Wind,get.var.ncdf(open.ncdf(paste(spatial,yearlist[j],'_Wind.nc',sep="")),varid="variable",start=start,count)) )      
+        Rad<-as.numeric(get.var.ncdf(open.ncdf(paste(spatial,yearlist[j],'_Rad.nc',sep="")),varid="variable",start=start,count))
+        if(length(Rad)==366){# add day for leap year if needed
+          clear<-c(clear[1:59],clear[59],clear[60:365])
+        }
+        cloud<-(1-Rad/clear)*100  
+        cloud[cloud<0]<-0
+        cloud[cloud>100]<-100
+        CCMAXX<-as.numeric(c(CCMAXX,cloud))
       }
     } 
     
+    CCMINN<-CCMAXX    
     
     ndays<-length(Tmax)
     julnum<-ndays
@@ -429,18 +445,7 @@ NicheMapR <- function(niche) {
           TMINN<-as.matrix(Tmin+adiab_corr_min)
         }
         RAINFALL<-Rain
-        cat(paste('computing cloud cover ',yearlist[j],' \n',sep=""))  
-        clear<-as.numeric(get.var.ncdf(open.ncdf(paste(spatial,'clearsky.nc',sep="")),varid="variable",start=start,count))
-        if(length(Rad)==366){# add day for leap year if needed
-          clear<-c(clear[1:59],clear[59],clear[60:365])
-        }
-        
-        cloud<-(1-Rad/clear)*100  
-        
-        cloud[cloud<0]<-0
-        cloud[cloud>100]<-100
-        CCMAXX<-cloud
-        CCMINN<-cloud
+
         VAPRES<-VP*100 # convert from hectopascals to pascals
         TMAXK<-TMAXX+273.15
         loge<-TMAXK
