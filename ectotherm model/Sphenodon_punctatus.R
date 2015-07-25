@@ -18,7 +18,7 @@ grasshade<-0 # use grass shade values from microclimate model as min shade value
 # habitat settings
 FLTYPE<-0.0  # fluid type 0.0=air, 1.0=water 
 SUBTK<-2.79 # substrate thermal conductivity (W/mC)
-soilnode<-7. # soil node at which eggs are laid (overridden if frogbreed is 1)
+soilnode<-5. # soil node at which eggs are laid (overridden if frogbreed is 1)
 minshade<-0. # minimum available shade (percent)
 maxshade<-80. # maximum available shade (percent)
 REFL<-rep(0.18,timeinterval*nyears) # substrate reflectances 
@@ -224,9 +224,9 @@ nP<-c(1,1.8,0.5,.15) # composition of product/faeces (atoms per carbon atoms for
 N_waste<-c(1,4/5,3/5,4/5) # chemical formula for nitrogenous waste product, CHON, e.g. Urea c(0,3,0,1), Uric acid c(5/5,4,3,4)
 
 # breeding life history
-clutchsize<-5. # clutch size, if using regression below, make this the max clutch size
-clutch_ab<-c(2.5,12.5) # paramters for relationship between length and clutch size: clutch size = a*SVL-b, make zero if fixed clutch size
-viviparous<-1 # 1=yes, 0=no
+clutchsize<-7. # clutch size, if using regression below, make this the max clutch size
+clutch_ab<-c(0,0) # paramters for relationship between length and clutch size: clutch size = a*SVL-b, make zero if fixed clutch size
+viviparous<-0 # 1=yes, 0=no
 batch<-1 # invoke Pequerie et al.'s batch laying model?
 
 # the following four parameters apply if batch = 1, i.e. animal mobilizes
@@ -372,11 +372,10 @@ abline(v=year_vals$dates,col='grey',lty=2) # add lines to show beginning of each
 plot(debout$CUMBATCH/1000~debout$dates,type='l', ylab='total energy, kJ',xlab="date") # plot energy in batch buffer (yolking eggs)
 points(debout$CUMREPRO/1000~debout$dates,type='l',col='red') # plot energy in the reproduction buffer (captial for egg production, but not currently transformed to eggs)
 abline(v=year_vals$dates,col='grey',lty=2) # add lines to show beginning of each year
-plot(debout$V_baby~debout$dates,type='l', ylab='embryo structure (cm3)',xlab="date") # plot embryo development (volume of structure)
 
 # plot thermoregulation
-subdate<-subset(environ, format(environ$dates,"%y/%m")=="00/07") # use this to subset a particular year and month
-#subdate<-environ # just use the whole data set
+subdate<-subset(environ, format(environ$dates,"%y/%m")=="97/07") # use this to subset a particular year and month
+subdate<-environ # just use the whole data set
 with(subdate, plot(TC~dates,ylim=c(-15,50),type = "l",col='blue')) # plot Tb
 with(subdate, points(ACT*5~dates,type = "l",col='pink')) # plot activity
 with(subdate, points(SHADE/10~dates,type = "l",col='dark green')) # plot shade use
