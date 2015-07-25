@@ -2,7 +2,7 @@ NicheMapR <- function(niche) {
   unlist(niche)
   
   errors<-0
-
+  
   # error trapping - originally inside the Fortran code, but now checking before executing Fortran
   if(sitemethod%in%c(0,1)==FALSE){
     cat("ERROR: the variable 'sitemethod' be either 0 or 1.
@@ -12,16 +12,6 @@ NicheMapR <- function(niche) {
   if(longlat[1]>180 | longlat[2] > 90){
     cat("ERROR: Latitude or longitude (longlat) is out of bounds.
         Please enter a correct value.", '\n')
-    errors<-1
-  }
-  if(timezone%in%c(0,1)==FALSE){
-    cat("ERROR: the variable 'timezone' be either 0 or 1.
-        Please correct.", '\n')
-    errors<-1
-  }
-  if(rungads%in%c(0,1)==FALSE){
-    cat("ERROR: the variable 'rungads' be either 0 or 1.
-        Please correct.", '\n')
     errors<-1
   }
   if(EC<0.0034 | EC > 0.058){
@@ -241,7 +231,7 @@ NicheMapR <- function(niche) {
         stop("could not install rgdal")
       }
     }
-
+    
     ################## end loading packages ###################################
     
     timeinterval<-365 # number of time intervals to generate predictions for over a year (must be 12 <= x <=365)
@@ -269,31 +259,29 @@ NicheMapR <- function(niche) {
     adiab_cor<-1 # correct for lapse rate
     microdaily<-1 # run microclimate model where one iteration of each day occurs and last day gives initial conditions for present day
     if(sitemethod==1){
-      longlat <- geocode(loc)[1, 3:4] # assumes first geocode match is correct
+      longlat <- geocode(loc)[3:4] # assumes first geocode match is correct
     }
     x <- rbind(longlat) # get long/lat in a form usable by the geocode and extract function
     
-
-
-          #get UTM from dec degrees
-      #UTMzone<-(floor((x[1] + 180)/6) %% 60) 
-      #if(sign(x[2])<0){hemisph<-'south'}else{hemisph<-'north'}
-      #utm<-project(x, paste("+proj=NZTM +",hemisph," +zone=",UTMzone," ellps=WGS84",sep=""))
-      
-
     
+    
+    #get UTM from dec degrees
+    #UTMzone<-(floor((x[1] + 180)/6) %% 60) 
+    #if(sign(x[2])<0){hemisph<-'south'}else{hemisph<-'north'}
+    #utm<-project(x, paste("+proj=NZTM +",hemisph," +zone=",UTMzone," ellps=WGS84",sep=""))
+    
+    
+    r1<-raster('weather/nz_geo3_km.asc')
+    utm<-project(x, "+proj=tmerc +lat_0=0.0 +lon_0=173.0 +k=0.9996 +x_0=1600000.0 +y_0=10000000.0 +datum=WGS84 +units=m")
+    elevslpasphori<-as.numeric(extract(stack(paste(spatial,"elevslpasphori.nc",sep="")),utm))  
+    ALTITUDES <- elevslpasphori[1]
+  
     if(terrain==1){
       cat("extracting terrain data")
       
       # now extract terrain data from elevslpasphori.nc
-      f1 <- paste(spatial,"elevslpasphori.nc",sep="");
-      
       # get UTM from dec degrees, NZTM
-      utm<-project(x, "+proj=tmerc +lat_0=0.0 +lon_0=173.0 +k=0.9996 +x_0=1600000.0 +y_0=10000000.0 +datum=WGS84 +units=m")
-      elevslpasphori<-as.numeric(extract(stack(f1),utm))
-      
       HORIZONS <- elevslpasphori[4:27]
-      ALTITUDES <- elevslpasphori[1]
       SLOPES <- elevslpasphori[2]
       AZMUTHS <- elevslpasphori[3]
       # the horizons have been arranged so that they go from 0 degrees azimuth (north) clockwise - r.horizon starts
@@ -308,15 +296,13 @@ NicheMapR <- function(niche) {
       NZDEM <- extract(r2, x)
       AGG <- extract(r3, x)
     }else{
-#       r1 <- raster(f1)
-#       r2 <- raster(f2)
-#       r3 <- raster(f3)
-#       r4 <- raster(f4)
-#      dbrow <- extract(r1, x)
-      NZDEM <- 0#extract(r2, x)
+      #       r1 <- raster(f1)
+      #       r2 <- raster(f2)
+      #       r3 <- raster(f3)
+      #       r4 <- raster(f4)
+      #      dbrow <- extract(r1, x)
+      NZDEM <- extract(r1, x)*1000
       AGG <- 0#extract(r3, x)
-      ALTITUDES <- 0#extract(r4, x)
-      #ALTITUDES <- NZDEM
       #cat("using 0.05 res DEM!")
       HORIZONS <- hori
       HORIZONS <- data.frame(HORIZONS)
@@ -346,29 +332,44 @@ NicheMapR <- function(niche) {
     adiab_corr_min = delta_elev * 0.0039 # Adiabatic temperature correction for elevation (C), mean for Australian Alps
     
     # read daily climate
-  
+    
+    
+    
+    
     yearlist<-seq(ystart,(ystart+(nyears-1)),1)
     for(j in 1:nyears){ # start loop through years
       cat('reading weather input \n')
+      lon_1<-as.numeric(longlat[1])
+      lat_1<-as.numeric(longlat[2])
+      lat<-read.csv('ncdf_lat.csv')[,2]
+      lon<-read.csv('ncdf_lon.csv')[,2]
+      dist1<-abs(lon-lon_1)
+      index1<-which.min(dist1)
+      dist2<-abs(lat-lat_1)
+      index2<-which.min(dist2)
+      start<-c(index1,index2,1)
+      count<-c(1,1,-1)
+      
       if(j==1){
-      Tmax<-as.numeric(extract(stack(paste(spatial,yearlist[j],'_Tmax.nc',sep="")),x))
-      Tmin<-as.numeric(extract(stack(paste(spatial,yearlist[j],'_Tmin.nc',sep="")),x))
-      VP<-as.numeric(extract(stack(paste(spatial,yearlist[j],'_VP.nc',sep="")),x))
-      Rain<-as.numeric(extract(stack(paste(spatial,yearlist[j],'_Rain.nc',sep="")),x))
-      SoilM<-as.numeric(extract(stack(paste(spatial,yearlist[j],'_SoilM.nc',sep="")),x))
-      Rad<-as.numeric(extract(stack(paste(spatial,yearlist[j],'_Rad.nc',sep="")),x))
-      Wind<-as.numeric(extract(stack(paste(spatial,yearlist[j],'_Wind.nc',sep="")),x))
+        Tmax<-as.numeric(extract(stack(paste(spatial,yearlist[j],'_Tmax.nc',sep="")),x))
+        Tmax<-as.numeric(get.var.ncdf(open.ncdf(paste(spatial,yearlist[j],'_Tmax.nc',sep="")),varid="variable",start=start,count))
+        Tmin<-as.numeric(get.var.ncdf(open.ncdf(paste(spatial,yearlist[j],'_Tmin.nc',sep="")),varid="variable",start=start,count))
+        VP<-as.numeric(get.var.ncdf(open.ncdf(paste(spatial,yearlist[j],'_VP.nc',sep="")),varid="variable",start=start,count))
+        Rain<-as.numeric(get.var.ncdf(open.ncdf(paste(spatial,yearlist[j],'_Rain.nc',sep="")),varid="variable",start=start,count))
+        SoilM<-as.numeric(get.var.ncdf(open.ncdf(paste(spatial,yearlist[j],'_SoilM.nc',sep="")),varid="variable",start=start,count))
+        Rad<-as.numeric(get.var.ncdf(open.ncdf(paste(spatial,yearlist[j],'_Rad.nc',sep="")),varid="variable",start=start,count))
+        Wind<-as.numeric(get.var.ncdf(open.ncdf(paste(spatial,yearlist[j],'_Wind.nc',sep="")),varid="variable",start=start,count))
       }else{
-      Tmax<-c(Tmax,as.numeric(extract(stack(paste(spatial,yearlist[j],'_Tmax.nc',sep="")),x)))
-      Tmin<-c(Tmin,as.numeric(extract(stack(paste(spatial,yearlist[j],'_Tmin.nc',sep="")),x)))
-      VP<-c(VP,as.numeric(extract(stack(paste(spatial,yearlist[j],'_VP.nc',sep="")),x)))
-      Rain<-c(Rain,as.numeric(extract(stack(paste(spatial,yearlist[j],'_Rain.nc',sep="")),x)))
-      SoilM<-c(SoilM,as.numeric(extract(stack(paste(spatial,yearlist[j],'_SoilM.nc',sep="")),x)))
-      Rad<-c(Rad,as.numeric(extract(stack(paste(spatial,yearlist[j],'_Rad.nc',sep="")),x)))
-      Wind<-c(Wind,as.numeric(extract(stack(paste(spatial,yearlist[j],'_Wind.nc',sep="")),x)))       
+        Tmax<-as.numeric(c(Tmax,get.var.ncdf(open.ncdf(paste(spatial,yearlist[j],'_Tmax.nc',sep="")),varid="variable",start=start,count)))
+        Tmin<-as.numeric(c(Tmin,get.var.ncdf(open.ncdf(paste(spatial,yearlist[j],'_Tmin.nc',sep="")),varid="variable",start=start,count)))
+        VP<-as.numeric(c(VP,get.var.ncdf(open.ncdf(paste(spatial,yearlist[j],'_VP.nc',sep="")),varid="variable",start=start,count)))
+        Rain<-as.numeric(c(Rain,get.var.ncdf(open.ncdf(paste(spatial,yearlist[j],'_Rain.nc',sep="")),varid="variable",start=start,count)))
+        SoilM<-as.numeric(c(SoilM,get.var.ncdf(open.ncdf(paste(spatial,yearlist[j],'_SoilM.nc',sep="")),varid="variable",start=start,count)))
+        Rad<-as.numeric(c(Rad,get.var.ncdf(open.ncdf(paste(spatial,yearlist[j],'_Rad.nc',sep="")),varid="variable",start=start,count)))
+        Wind<-as.numeric(c(Wind,get.var.ncdf(open.ncdf(paste(spatial,yearlist[j],'_Wind.nc',sep="")),varid="variable",start=start,count)) )      
       }
-      } 
-
+    } 
+    
     
     nyears2<-length(Tmax)/365
     ndays<-length(Tmax)
@@ -399,46 +400,44 @@ NicheMapR <- function(niche) {
       
       if(is.na(ALTITUDES)!=TRUE){ 
         
-        if(rungads==1){
-          ####### get solar attenuation due to aerosols with program GADS #####################
-          maindir<-getwd()
-          setwd('../micro_global/')
-          ####### get solar attenuation due to aerosols with program GADS #####################
-          lat5s<-seq(-90,90,5) #lat range for GADS
-          lon5s<-seq(-180,175,5) #long range for GADS
-          lat5<-(45)# lat5s[which.min(abs(lat5s-x[2]))]
-          lon5<-(-90)#lon5s[which.min(abs(lon5s-x[1]))]
-          relhum<-1.
-          season<-0.
-          gadin<-list(lat5=lat5,lon5=lon5,relhum=relhum,season=season)
-          source('gads/gads.R')
-          gadout<-gads(gadin)
-          optdep.summer<-as.data.frame(gadout$optdep)
-          season<-1.
-          gadin<-list(lat5=lat5,lon5=lon5,relhum=relhum,season=season)
-          gadout<-gads(gadin)
-          optdep.winter<-as.data.frame(gadout$optdep)
-          optdep<-cbind(optdep.winter[,1],rowMeans(cbind(optdep.summer[,2],optdep.winter[,2])))
-          optdep<-as.data.frame(optdep)
-          colnames(optdep)<-c("LAMBDA","OPTDEPTH")
-          a<-lm(OPTDEPTH~poly(LAMBDA, 6, raw=TRUE),data=optdep)
-          LAMBDA<-c(290,295,300,305,310,315,320,330,340,350,360,370,380,390,400,420,440,460,480,500,520,540,560,580,600,620,640,660,680,700,720,740,760,780,800,820,840,860,880,900,920,940,960,980,1000,1020,1080,1100,1120,1140,1160,1180,1200,1220,1240,1260,1280,1300,1320,1380,1400,1420,1440,1460,1480,1500,1540,1580,1600,1620,1640,1660,1700,1720,1780,1800,1860,1900,1950,2000,2020,2050,2100,2120,2150,2200,2260,2300,2320,2350,2380,2400,2420,2450,2490,2500,2600,2700,2800,2900,3000,3100,3200,3300,3400,3500,3600,3700,3800,3900,4000)
-          TAI<-predict(a,data.frame(LAMBDA))
-          setwd(maindir) #getting back to working directory
-          ################ end GADS ################################################## 
-        }else{ # use the original profile from Elterman, L. 1970. Vertical-attenuation model with eight surface meteorological ranges 2 to 13 kilometers. U. S. Airforce Cambridge Research Laboratory, Bedford, Mass.
-          TAI<-c(0.0670358341290886,0.0662612704779235,0.065497075238002,0.0647431301168489,0.0639993178022531,0.0632655219571553,0.0625416272145492,0.0611230843885423,0.0597427855962549,0.0583998423063099,0.0570933810229656,0.0558225431259535,0.0545864847111214,0.0533843764318805,0.0522154033414562,0.0499736739981675,0.047855059159556,0.0458535417401334,0.0439633201842001,0.0421788036108921,0.0404946070106968,0.0389055464934382,0.0374066345877315,0.0359930755919066,0.0346602609764008,0.0334037648376212,0.0322193394032758,0.0311029105891739,0.0300505736074963,0.0290585886265337,0.0281233764818952,0.0272415144391857,0.0264097320081524,0.0256249068083005,0.0248840604859789,0.0241843546829336,0.0235230870563317,0.0228976873502544,0.0223057135186581,0.0217448478998064,0.0212128934421699,0.0207077699817964,0.0202275105711489,0.0197702578594144,0.0193342605242809,0.0189178697551836,0.0177713140039894,0.0174187914242432,0.0170790495503944,0.0167509836728154,0.0164335684174899,0.0161258546410128,0.0158269663770596,0.0155360978343254,0.0152525104459325,0.0149755299703076,0.0147045436435285,0.0144389973831391,0.0141783930434343,0.0134220329447663,0.0131772403830191,0.0129356456025128,0.0126970313213065,0.0124612184223418,0.0122280636204822,0.01199745718102,0.0115436048739351,0.0110993711778668,0.0108808815754663,0.0106648652077878,0.0104513876347606,0.0102405315676965,0.00982708969547694,0.00962473896278535,0.00903679230300494,0.00884767454432418,0.0083031278398166,0.00796072474935954,0.00755817587626185,0.00718610751850881,0.00704629977586921,0.00684663903049612,0.00654155580333479,0.00642947339729728,0.00627223096874308,0.00603955966866779,0.00580920937536261,0.00568506186880564,0.00563167068287251,0.00556222005081865,0.00550522989971023,0.00547395763028062,0.0054478983436216,0.00541823364504573,0.00539532163908382,0.00539239864119488,0.00541690124712384,0.00551525885358836,0.00564825853509463,0.00577220185074264,0.00584222986640171,0.00581645238345584,0.00566088137411449,0.00535516862329704,0.00489914757707667,0.00432017939770409,0.0036813032251836,0.00309019064543606,0.00270890436501562,0.00276446109239711,0.00356019862584603)
-        } #end check if running gads
+        
+        ####### get solar attenuation due to aerosols with program GADS #####################
+        maindir<-getwd()
+        setwd('../micro_global/')
+        ####### get solar attenuation due to aerosols with program GADS #####################
+        lat5s<-seq(-90,90,5) #lat range for GADS
+        lon5s<-seq(-180,175,5) #long range for GADS
+        lat5<-(45)# lat5s[which.min(abs(lat5s-x[2]))]
+        lon5<-(-90)#lon5s[which.min(abs(lon5s-x[1]))]
+        relhum<-1.
+        season<-0.
+        gadin<-list(lat5=lat5,lon5=lon5,relhum=relhum,season=season)
+        source('gads/gads.R')
+        gadout<-gads(gadin)
+        optdep.summer<-as.data.frame(gadout$optdep)
+        season<-1.
+        gadin<-list(lat5=lat5,lon5=lon5,relhum=relhum,season=season)
+        gadout<-gads(gadin)
+        optdep.winter<-as.data.frame(gadout$optdep)
+        optdep<-cbind(optdep.winter[,1],rowMeans(cbind(optdep.summer[,2],optdep.winter[,2])))
+        optdep<-as.data.frame(optdep)
+        colnames(optdep)<-c("LAMBDA","OPTDEPTH")
+        a<-lm(OPTDEPTH~poly(LAMBDA, 6, raw=TRUE),data=optdep)
+        LAMBDA<-c(290,295,300,305,310,315,320,330,340,350,360,370,380,390,400,420,440,460,480,500,520,540,560,580,600,620,640,660,680,700,720,740,760,780,800,820,840,860,880,900,920,940,960,980,1000,1020,1080,1100,1120,1140,1160,1180,1200,1220,1240,1260,1280,1300,1320,1380,1400,1420,1440,1460,1480,1500,1540,1580,1600,1620,1640,1660,1700,1720,1780,1800,1860,1900,1950,2000,2020,2050,2100,2120,2150,2200,2260,2300,2320,2350,2380,2400,2420,2450,2490,2500,2600,2700,2800,2900,3000,3100,3200,3300,3400,3500,3600,3700,3800,3900,4000)
+        TAI<-predict(a,data.frame(LAMBDA))
+        setwd(maindir) #getting back to working directory
+        ################ end GADS ################################################## 
         
         
-
+        
+        
         if(adiab_cor==1){
           TMAXX<-as.matrix(Tmax+adiab_corr_max)
           TMINN<-as.matrix(Tmin+adiab_corr_min)
         }
         RAINFALL<-Rain
-
-        clear<-as.numeric(extract(stack(paste(spatial,'clearsky.nc',sep="")),x))
+        cat(paste('computing cloud cover ',yearlist[j],' \n',sep=""))  
+        clear<-as.numeric(get.var.ncdf(open.ncdf(paste(spatial,'clearsky.nc',sep="")),varid="variable",start=start,count))
         if(length(Rad)==366){# add day for leap year if needed
           clear<-c(clear[1:59],clear[59],clear[60:365])
         }
@@ -449,39 +448,39 @@ NicheMapR <- function(niche) {
         cloud[cloud>100]<-100
         CCMAXX<-cloud
         CCMINN<-cloud
-          VAPRES<-VP*100 # convert from hectopascals to pascals
-          TMAXK<-TMAXX+273.15
-          loge<-TMAXK
-          loge[loge>273.16]<- -7.90298*(373.16/TMAXK-1.)+5.02808*log10(373.16/TMAXK)-1.3816E-07*(10.^(11.344*(1.-TMAXK/373.16))-1.)+8.1328E-03*(10.^(-3.49149*(373.16/TMAXK-1.))-1.)+log10(1013.246)
-          loge[loge<=273.16]<- -9.09718*(273.16/TMAXK-1.)-3.56654*log10(273.16/TMAXK)+.876793*(1.-TMAXK/273.16)+log10(6.1071)
-          estar<-(10.^loge)*100. 
-          RHMINN<-(VAPRES/estar)*100
-          RHMINN[RHMINN>100]<-100
-          RHMINN[RHMINN<0]<-0.01
-          #RHMINN
-          TMINK<-TMINN+273.15
-          loge<-TMINK
-          loge[loge>273.16]<- -7.90298*(373.16/TMINK-1.)+5.02808*log10(373.16/TMINK)-1.3816E-07*(10.^(11.344*(1.-TMINK/373.16))-1.)+8.1328E-03*(10.^(-3.49149*(373.16/TMINK-1.))-1.)+log10(1013.246)
-          loge[loge<=273.16]<- -9.09718*(273.16/TMINK-1.)-3.56654*log10(273.16/TMINK)+.876793*(1.-TMINK/273.16)+log10(6.1071)
-          estar<-(10.^loge)*100. 
-          RHMAXX<-(VAPRES/estar)*100
-          RHMAXX[RHMAXX>100]<-100
-          RHMAXX[RHMAXX<0]<-0.01
-
+        VAPRES<-VP*100 # convert from hectopascals to pascals
+        TMAXK<-TMAXX+273.15
+        loge<-TMAXK
+        loge[loge>273.16]<- -7.90298*(373.16/TMAXK-1.)+5.02808*log10(373.16/TMAXK)-1.3816E-07*(10.^(11.344*(1.-TMAXK/373.16))-1.)+8.1328E-03*(10.^(-3.49149*(373.16/TMAXK-1.))-1.)+log10(1013.246)
+        loge[loge<=273.16]<- -9.09718*(273.16/TMAXK-1.)-3.56654*log10(273.16/TMAXK)+.876793*(1.-TMAXK/273.16)+log10(6.1071)
+        estar<-(10.^loge)*100. 
+        RHMINN<-(VAPRES/estar)*100
+        RHMINN[RHMINN>100]<-100
+        RHMINN[RHMINN<0]<-0.01
+        #RHMINN
+        TMINK<-TMINN+273.15
+        loge<-TMINK
+        loge[loge>273.16]<- -7.90298*(373.16/TMINK-1.)+5.02808*log10(373.16/TMINK)-1.3816E-07*(10.^(11.344*(1.-TMINK/373.16))-1.)+8.1328E-03*(10.^(-3.49149*(373.16/TMINK-1.))-1.)+log10(1013.246)
+        loge[loge<=273.16]<- -9.09718*(273.16/TMINK-1.)-3.56654*log10(273.16/TMINK)+.876793*(1.-TMINK/273.16)+log10(6.1071)
+        estar<-(10.^loge)*100. 
+        RHMAXX<-(VAPRES/estar)*100
+        RHMAXX[RHMAXX>100]<-100
+        RHMAXX[RHMAXX<0]<-0.01
+        
         ALLMINTEMPS<-TMINN
         ALLMAXTEMPS<-TMAXX
         ALLTEMPS <- cbind(ALLMAXTEMPS,ALLMINTEMPS)
-
+        
         WNMAXX <- Wind
         WNMINN <- Wind  
-
+        
         
         if(soildata==1){
-#           uppermoist1<-spline(juldaysn2,moistupper,n=ndays,xmin=1,xmax=ndays,method="periodic")
-#           lowermoist1<-spline(juldaysn2,moistlower,n=ndays,xmin=1,xmax=ndays,method="periodic")
-#           uppermoists<-uppermoist1$y
-#           lowermoists<-lowermoist1$y
-
+          #           uppermoist1<-spline(juldaysn2,moistupper,n=ndays,xmin=1,xmax=ndays,method="periodic")
+          #           lowermoist1<-spline(juldaysn2,moistlower,n=ndays,xmin=1,xmax=ndays,method="periodic")
+          #           uppermoists<-uppermoist1$y
+          #           lowermoists<-lowermoist1$y
+          
           SLES1<-spline(juldays12,SLES,n=timeinterval,xmin=1,xmax=365,method="periodic")
           SLES<-rep(SLES1$y,nyears)
           SLES<-SLES[1:ndays]
@@ -530,41 +529,36 @@ NicheMapR <- function(niche) {
         
         
         
-#         if(soildata==1){
-#           # extra code for soil moisture start 
-#           Intrvls <-(1:julnum) # user-supplied last Julian day in each time interval sequence
-#           Numint <- julnum  # number of time intervals
-#           Numtyps <- 4
-#           depinterval<-findInterval(upperdep*100, DEP)
-#           deepnode1<-depinterval
-#           depinterval<-findInterval(lowerdep*100, DEP)
-#           deepnode2<-depinterval
-#           deepnode3<-10
-#           toprow<-rep(deepnode1,julnum)
-#           middlerow<-rep(deepnode2,julnum)
-#           bottomrow<-rep(deepnode3,julnum)
-#           Nodes <- matrix(data = 0, nrow = 10, ncol = 7300) # deepest nodes for each substrate type
-#           Nodes[1,1:julnum]<-3
-#           Nodes[2,1:julnum]<-toprow
-#           Nodes[3,1:julnum]<-middlerow
-#           Nodes[4,1:julnum]<-bottomrow
-#         }else{
-          Intrvls<-rep(0,7300)  
-          Intrvls[1] <- 1 # user-supplied last Julian day in each time interval sequence
-          Numtyps <- 1 # number of substrate types
-          Numint <- 1  # number of time intervals
-          Nodes <- matrix(data = 0, nrow = 10, ncol = 7300) # deepest nodes for each substrate type
-          Nodes[1,1] <- 10. # deepest nodes for each substrate type
-#         }
+        #         if(soildata==1){
+        #           # extra code for soil moisture start 
+        #           Intrvls <-(1:julnum) # user-supplied last Julian day in each time interval sequence
+        #           Numint <- julnum  # number of time intervals
+        #           Numtyps <- 4
+        #           depinterval<-findInterval(upperdep*100, DEP)
+        #           deepnode1<-depinterval
+        #           depinterval<-findInterval(lowerdep*100, DEP)
+        #           deepnode2<-depinterval
+        #           deepnode3<-10
+        #           toprow<-rep(deepnode1,julnum)
+        #           middlerow<-rep(deepnode2,julnum)
+        #           bottomrow<-rep(deepnode3,julnum)
+        #           Nodes <- matrix(data = 0, nrow = 10, ncol = 7300) # deepest nodes for each substrate type
+        #           Nodes[1,1:julnum]<-3
+        #           Nodes[2,1:julnum]<-toprow
+        #           Nodes[3,1:julnum]<-middlerow
+        #           Nodes[4,1:julnum]<-bottomrow
+        #         }else{
+        Intrvls<-rep(0,7300)  
+        Intrvls[1] <- 1 # user-supplied last Julian day in each time interval sequence
+        Numtyps <- 1 # number of substrate types
+        Numint <- 1  # number of time intervals
+        Nodes <- matrix(data = 0, nrow = 10, ncol = 7300) # deepest nodes for each substrate type
+        Nodes[1,1] <- 10. # deepest nodes for each substrate type
+        #         }
         
-        if(timezone==1){
-          if(!require(geonames)){
-            stop('package "geonames" is required.')
-          }
-          ALREF<-(GNtimezone(longlat[2],longlat[1])[4])*-15
-        }else{  
-          ALREF <- abs(trunc(x[1]))
-        }
+        
+        ALREF <- abs(trunc(x[1]))
+        
         
         HEMIS <- ifelse(x[2]<0,2.,1.) 
         ALAT <- abs(trunc(x[2]))
@@ -600,7 +594,7 @@ NicheMapR <- function(niche) {
           }
         }
         
-      
+        
         # correct for fact that wind is measured at 10 m height
         # wind shear equation v / vo = (h / ho)^a
         #where
@@ -616,9 +610,9 @@ NicheMapR <- function(niche) {
         #Heavy trees 	0.25
         #Several buildings 	0.25
         #Hilly, mountainous terrain 	0.25
-             WNMAXX<-WNMAXX*(1.2/2)^0.15
-             WNMINN<-WNMINN*(1.2/2)^0.15
-
+        WNMAXX<-WNMAXX*(1.2/2)^0.15
+        WNMINN<-WNMINN*(1.2/2)^0.15
+        
         
         SNOW <- rep(0,timeinterval*nyears) # no snow simulated on surface
         
@@ -628,30 +622,30 @@ NicheMapR <- function(niche) {
         
         SLES<-matrix(nrow=7300,data=0) 
         SLES<-SLES+SLE
-          
-          moists2<-matrix(nrow=10, ncol = ndays, data=0)
-          moists2[1,ndays]<-SoilMoist[1]
+        
+        moists2<-matrix(nrow=10, ncol = ndays, data=0)
+        moists2[1,ndays]<-SoilMoist[1]
+        moists<-moists2
+        
+        if(runmoist==1){
+          if(timeinterval==365){
+            moists2<-matrix(nrow=10, ncol = 365*20, data=0) # set up an empty vector for soil moisture values through time
+          }else{
+            moists2<-matrix(nrow=10, ncol = timeinterval, data=0) # set up an empty vector for soil moisture values through time
+          }
+          moists2[1:10,]<-SoilMoist_Init
           moists<-moists2
-
-      if(runmoist==1){
-       if(timeinterval==365){
-        moists2<-matrix(nrow=10, ncol = 365*20, data=0) # set up an empty vector for soil moisture values through time
-      }else{
-        moists2<-matrix(nrow=10, ncol = timeinterval, data=0) # set up an empty vector for soil moisture values through time
-      }
-      moists2[1:10,]<-SoilMoist_Init
-      moists<-moists2
         }
         soilprops<-matrix(data = 0, nrow = 10, ncol = 6)
-           soilprops[1,1]<-BulkDensity 
-          soilprops[1,2]<-SatWater    
-          soilprops[1,3]<-Clay       
-          soilprops[1,4]<-Thcond 
-          soilprops[1,5]<-SpecHeat        
-          soilprops[1,6]<-Density 
+        soilprops[1,1]<-BulkDensity 
+        soilprops[1,2]<-SatWater    
+        soilprops[1,3]<-Clay       
+        soilprops[1,4]<-Thcond 
+        soilprops[1,5]<-SpecHeat        
+        soilprops[1,6]<-Density 
         soilprops<-(ifelse(is.na(soilprops),0,soilprops))
         
-
+        
         if(loop>0){
           TMAXX<-c(TMAXX[((loop)*365+1):(nyears*365)],TMAXX[1:((loop)*365)])
           TMINN<-c(TMINN[((loop)*365+1):(nyears*365)],TMINN[1:((loop)*365)])
@@ -666,8 +660,8 @@ NicheMapR <- function(niche) {
           RAINFALL<-c(RAINFALL[((loop)*365+1):(nyears*365)],RAINFALL[1:((loop)*365)])
           
         }
-fieldcap<-0
-wilting<-0
+        fieldcap<-0
+        wilting<-0
         # microclimate input parameters listALTT,ALREF,ALMINT,ALONG,AMINUT,ALAT
         ALTT<-as.numeric(ALTT)
         ALREF<-as.numeric(ALREF)
@@ -676,17 +670,17 @@ wilting<-0
         AMINUT<-as.numeric(AMINUT)
         ALAT<-as.numeric(ALAT)
         if(snowmodel==1){
-        microinput<-c(julnum,RUF,ERR,Usrhyt,Numtyps,Numint,Z01,Z02,ZH1,ZH2,idayst,ida,HEMIS,ALAT,AMINUT,ALONG,ALMINT,ALREF,SLOPE,AZMUTH,ALTT,CMH2O,microdaily,tannul,EC,VIEWF,snowtemp,snowdens,snowmelt,undercatch,fieldcap,wilting,rainmult,rainmult,runshade,rainmelt)
+          microinput<-c(julnum,RUF,ERR,Usrhyt,Numtyps,Numint,Z01,Z02,ZH1,ZH2,idayst,ida,HEMIS,ALAT,AMINUT,ALONG,ALMINT,ALREF,SLOPE,AZMUTH,ALTT,CMH2O,microdaily,tannul,EC,VIEWF,snowtemp,snowdens,snowmelt,undercatch,fieldcap,wilting,rainmult,rainmult,runshade,rainmelt)
         }else{
-        microinput<-c(julnum,RUF,ERR,Usrhyt,Numtyps,Numint,Z01,Z02,ZH1,ZH2,idayst,ida,HEMIS,ALAT,AMINUT,ALONG,ALMINT,ALREF,SLOPE,AZMUTH,ALTT,CMH2O,microdaily,tannul,EC,VIEWF,snowtemp,snowdens,snowmelt,undercatch,rainmult,runshade,runmoist,maxpool,evenrain)
+          microinput<-c(julnum,RUF,ERR,Usrhyt,Numtyps,Numint,Z01,Z02,ZH1,ZH2,idayst,ida,HEMIS,ALAT,AMINUT,ALONG,ALMINT,ALREF,SLOPE,AZMUTH,ALTT,CMH2O,microdaily,tannul,EC,VIEWF,snowtemp,snowdens,snowmelt,undercatch,rainmult,runshade,runmoist,maxpool,evenrain)
         }
-      shore<-0
-      if(shore==0){
-      tides<-matrix(data = 0., nrow = 24*7300, ncol = 3) # make an empty matrix
-      }
+        shore<-0
+        if(shore==0){
+          tides<-matrix(data = 0., nrow = 24*7300, ncol = 3) # make an empty matrix
+        }
         
         micro<-list(tides=tides,microinput=microinput,julday=julday,SLES=SLES,DEP=DEP,Intrvls=Intrvls,Nodes=Nodes,MAXSHADES=MAXSHADES,MINSHADES=MINSHADES,TIMAXS=TIMAXS,TIMINS=TIMINS,TMAXX=TMAXX,TMINN=TMINN,RHMAXX=RHMAXX,RHMINN=RHMINN,CCMAXX=CCMAXX,CCMINN=CCMINN,WNMAXX=WNMAXX,WNMINN=WNMINN,SNOW=SNOW,REFLS=REFLS,PCTWET=PCTWET,soilinit=soilinit,hori=hori,TAI=TAI,soilprops=soilprops,moists=moists,RAINFALL=RAINFALL,tannulrun=tannulrun,PE=PE,KS=KS,BB=BB,BD=BD,L=L,LAI=LAI)
-
+        
         # write all input to csv files in their own folder
         if(write_input==1){
           cat('writing out model input \n')
@@ -727,13 +721,13 @@ wilting<-0
           write.table(tides,file="microclimates/csv input/tides.csv", sep = ",", col.names = NA, qmethod = "double")
         }
         
- 
+        
         setwd('../microclimate')
         cat('running microclimate model \n')
         if(mac==1){
-         source('microrun_mac.R')
+          source('microrun_mac.R')
         }else{
-         source('microrun.R')
+          source('microrun.R')
         }
         microut<-microclimate(micro)
         setwd(maindir)
