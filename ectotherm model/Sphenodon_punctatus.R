@@ -363,7 +363,7 @@ with(bask,points((TIME-1)~DAY,pch=15,cex=.5,col='grey')) # plot basking
 
 
 # plot mass and reproduction phenology
-plotdebout<-subset(debout,as.numeric(format(dates, "%Y"))<1994) # use this if you want to subset particular years
+plotdebout<-subset(debout,as.numeric(format(dates, "%Y"))<2015) # use this if you want to subset particular years
 plotdebout<-debout # this just keeps it to all years
 year_vals<-subset(plotdebout,as.character(dates,format='%d/%m')=="01/01")
 year_vals<-subset(year_vals,as.character(year_vals$dates,format='%H')=="00") # get midnight
