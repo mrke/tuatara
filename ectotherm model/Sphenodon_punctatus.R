@@ -124,7 +124,7 @@ MR_3<-0.038
 ################### Dynamic Energy Budget Model Parameters ################
 debpars<-as.data.frame(read.csv('DEB model/DEB_pars_Sphenodon_punctatus.csv',header=FALSE))$V1
 fract<-1
-f<-1.
+f<-1
 MsM<-186.03*6. # J/cm3 produces a stomach volume of 5.3 cm3/100 g, as measured for Disosaurus dorsalis, adjusted for Egernia cunninghami
 z<-debpars[8]*fract
 delta<-debpars[9]
@@ -265,10 +265,10 @@ v_init<-3e-9
 E_init<-E_Egg/v_init
 E_H_init<-0
 stage<-0
-v_init<-(debpars[25]^3)*fract^3 #hatchling
-E_init<-E_m
-E_H_init<-E_Hb+5
-stage<-1
+# v_init<-(debpars[25]^3)*fract^3 #hatchling
+# E_init<-E_m
+# E_H_init<-E_Hb+5
+# stage<-1
 # v_init<-(debpars[26]^3)*fract^3*0.85
 # E_init<-E_m
 # E_H_init<-E_Hp+1

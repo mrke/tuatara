@@ -79,7 +79,7 @@ data.Li  = 26.7;   units.Li  = 'cm';   label.Li  = 'ultimate snout to vent lengt
 data.Wdb = 4.27*0.3; units.Wdb = 'g';    label.Wdb = 'dry weight at birth';              bibkey.Wdb = 'Cree_unpub';
 %find dry weight at puberty
 data.Wdp = 102*0.3;   units.Wdp = 'g';    label.Wdp = 'dry weight at puberty';            bibkey.Wdp = 'Cree_1994';
-data.Wdi = 690*0.3;   units.Wdi = 'g';    label.Wdi = 'ultimate dry weight';              bibkey.Wdi = 'Dawbin_1982';
+data.Wdi = 650*0.3;   units.Wdi = 'g';    label.Wdi = 'ultimate dry weight';              bibkey.Wdi = 'Dawbin_1982';
 data.Ri  = 10/(365*4);    units.Ri  = '#/d';  label.Ri  = 'maximum reprod rate';              bibkey.Ri  = 'Cree_1994';
   % for an individual of ultimate length Li 
   temp.Ri = T_C +  15.52;  bibkey.Ri = 'Jarvie_unpub'; % K, temperature, based on simulation of Tb from 2000-2013 at Stephens Island/Takapourewa, see last lines of Sphenodon_punctatus traits.R;
@@ -119,18 +119,18 @@ weight = setweights(data, []);
 % zero-variate data:
 % weight.Wdi = 100 * weight.Wdi; % Much more confidence in the ultimate dry
 %                                % weight than the other data points
- weight.Ri = 50*weight.Ri;
+ weight.Ri = 500*weight.Ri;
  weight.Wdb = 50*weight.Wdb;
 %weight.Wdp = 10*weight.Wdp;
 %weight.Wdi = 100*weight.Wdi;
 %weight.ap = 10*weight.ap;
- weight.ap = 100*weight.ab;
+ weight.ap = 800*weight.ab;
  weight.Li = 50*weight.Li;
 
 
 % uni-variate data: 
  weight.TO = 5 * weight.TO;
- weight.LW = 20 * weight.LW;
+ weight.LW = 5 * weight.LW;
  weight.tL = 5 * weight.tL;
 
 %% set pseudodata and respective weights
