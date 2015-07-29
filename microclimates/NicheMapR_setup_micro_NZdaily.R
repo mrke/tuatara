@@ -382,6 +382,7 @@ NicheMapR <- function(niche) {
     } 
     
     CCMINN<-CCMAXX    
+    Wind[Wind==0]<-0.1
     
     ndays<-length(Tmax)
     julnum<-ndays

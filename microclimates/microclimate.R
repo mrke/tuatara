@@ -25,14 +25,14 @@ spatial<-"/Spatial_Data/Climate/New Zealand/weather/" # place where climate inpu
 mac<-0
 
 ############## location and climatic data  ###################################
-sitemethod <- 0 # 0=specified single site long/lat, 1=place name search using geodis (needs internet)
+sitemethod <- 1 # 0=specified single site long/lat, 1=place name search using geodis (needs internet)
 longlat<-c(173.82,-40.823) # Stephens Island: c(173.82,-40.823)
 loc <- "Arthurs Pass, New Zealand" # type in a location here, used if option 1 is chosen above
 terrain<-0 # include terrain (slope, aspect, horizon angles) (1) or not (0)?
 soildata<-0 # include soil data for New Zealand (1) or not (0)?
 snowmodel<-0 # run snow version? (slower!)
 ystart <- 1997# start year for weather generator calibration dataset or AWAP database
-yfinish <- 2001# end year for weather generator calibration dataset
+yfinish <- 2007# end year for weather generator calibration dataset
 nyears<-yfinish-ystart+1# integer, number of years for which to run the microclimate model, only for AWAP data (!!max 10 years!!)
 
 ############# microclimate model parameters ################################
