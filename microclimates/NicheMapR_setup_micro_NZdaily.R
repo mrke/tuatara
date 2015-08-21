@@ -9,6 +9,9 @@ NicheMapR <- function(niche) {
         Please correct.", '\n')
     errors<-1
   }
+  if(DEP[2]-DEP[1]>3 | DEP[3]-DEP[2]>3){
+    cat("warning, nodes might be too far apart near the surface, try a different spacing if the program is crashing \n")
+  }
   if(longlat[1]>180 | longlat[2] > 90){
     cat("ERROR: Latitude or longitude (longlat) is out of bounds.
         Please enter a correct value.", '\n')
@@ -236,7 +239,7 @@ NicheMapR <- function(niche) {
     
     timeinterval<-365 # number of time intervals to generate predictions for over a year (must be 12 <= x <=365)
     tzone<-paste("Etc/GMT-12",sep="") # doing it this way ignores daylight savings!
-    daystorun<-length(seq(ISOdate(ystart,1,1,tz=tzone)-3600*12, ISOdate((ystart+nyears),1,1,tz=tzone)-3600*13, by="days"))
+    dim<-length(seq(ISOdate(ystart,1,1,tz=tzone)-3600*12, ISOdate((ystart+nyears),1,1,tz=tzone)-3600*13, by="days"))
     juldays12<-c(15.,46.,74.,105.,135.,166.,196.,227.,258.,288.,319.,349.)
     juldaysn<-juldays12
     if(nyears>1){ # create sequence of days for splining across multiple years
@@ -247,14 +250,14 @@ NicheMapR <- function(niche) {
     daystart<-1
     dates<-Sys.time()-60*60*24
     curyear<-as.numeric(format(dates,"%Y"))
-    REFL<-rep(REFL,daystorun) # soil reflectances
-    SoilMoist<-rep(SoilMoist,daystorun)
+    REFL<-rep(REFL,dim) # soil reflectances
+    SoilMoist<-rep(SoilMoist,dim)
     Density<-Density/1000 # density of minerals - convert to Mg/m3
     BulkDensity<-BulkDensity/1000 # density of minerals - convert to Mg/m3
     if(soildata==0){
       soilprop<-cbind(0,0)
-      maxshades <- rep(maxshade,daystorun)
-      minshades <- rep(minshade,daystorun)
+      maxshades <- rep(maxshade,dim)
+      minshades <- rep(minshade,dim)
     }
     pctwet_mult<-0#0.01 # factor by which uppper soil wetness is multiplied to get surface %wet for evaporative cooling
     
@@ -507,7 +510,7 @@ NicheMapR <- function(niche) {
           }
         }
         
-        REFLS <- (1:(daystorun))*0+REFL
+        REFLS <- (1:(dim))*0+REFL
         if((soildata==1)&(length(RAINFALL)>0)){
           soilwet<-RAINFALL
           soilwet[soilwet<=rainwet] = 0 
@@ -516,8 +519,8 @@ NicheMapR <- function(niche) {
           #PCTWET <- uppermoists*soilprop$A_01bar*pctwet_mult*100
           PCTWET<-pmax(soilwet,PCTWET)
         }else{
-          REFLS <- (1:(daystorun))*0+REFL
-          PCTWET <- (1:(daystorun))*0+PCTWET
+          REFLS <- (1:(dim))*0+REFL
+          PCTWET <- (1:(dim))*0+PCTWET
           soilwet<-RAINFALL
           soilwet[soilwet<=rainwet] = 0 
           soilwet[soilwet>0] = 90
@@ -547,11 +550,11 @@ NicheMapR <- function(niche) {
         #           Nodes[3,1:julnum]<-middlerow
         #           Nodes[4,1:julnum]<-bottomrow
         #         }else{
-        Intrvls<-rep(0,7300)  
+        Intrvls<-rep(0,dim)  
         Intrvls[1] <- 1 # user-supplied last Julian day in each time interval sequence
         Numtyps <- 1 # number of substrate types
         Numint <- 1  # number of time intervals
-        Nodes <- matrix(data = 0, nrow = 10, ncol = 7300) # deepest nodes for each substrate type
+        Nodes <- matrix(data = 0, nrow = 10, ncol = dim) # deepest nodes for each substrate type
         Nodes[1,1] <- 10. # deepest nodes for each substrate type
         #         }
         
@@ -617,13 +620,13 @@ NicheMapR <- function(niche) {
         WNMINN<-WNMINN*(1.2/2)^0.15
         
         
-        SNOW <- rep(0,daystorun) # no snow simulated on surface
+        SNOW <- rep(0,dim) # no snow simulated on surface
         
         # impose uniform warming
         TMAXX<-TMAXX+warm
         TMINN<-TMINN+warm
         
-        SLES<-matrix(nrow=7300,data=0) 
+        SLES<-matrix(nrow=dim,data=0) 
         SLES<-SLES+SLE
         
         moists2<-matrix(nrow=10, ncol = ndays, data=0)
@@ -631,11 +634,7 @@ NicheMapR <- function(niche) {
         moists<-moists2
         
         if(runmoist==1){
-          if(timeinterval==365){
-            moists2<-matrix(nrow=10, ncol = daystorun, data=0) # set up an empty vector for soil moisture values through time
-          }else{
-            moists2<-matrix(nrow=10, ncol = timeinterval, data=0) # set up an empty vector for soil moisture values through time
-          }
+          moists2<-matrix(nrow=10, ncol = dim, data=0) # set up an empty vector for soil moisture values through time
           moists2[1:10,]<-SoilMoist_Init
           moists<-moists2
         }
@@ -679,10 +678,10 @@ NicheMapR <- function(niche) {
         }
         shore<-0
         if(shore==0){
-          tides<-matrix(data = 0., nrow = 24*7300, ncol = 3) # make an empty matrix
+          tides<-matrix(data = 0., nrow = 24*dim, ncol = 3) # make an empty matrix
         }
         
-        micro<-list(tides=tides,microinput=microinput,julday=julday,SLES=SLES,DEP=DEP,Intrvls=Intrvls,Nodes=Nodes,MAXSHADES=MAXSHADES,MINSHADES=MINSHADES,TIMAXS=TIMAXS,TIMINS=TIMINS,TMAXX=TMAXX,TMINN=TMINN,RHMAXX=RHMAXX,RHMINN=RHMINN,CCMAXX=CCMAXX,CCMINN=CCMINN,WNMAXX=WNMAXX,WNMINN=WNMINN,SNOW=SNOW,REFLS=REFLS,PCTWET=PCTWET,soilinit=soilinit,hori=hori,TAI=TAI,soilprops=soilprops,moists=moists,RAINFALL=RAINFALL,tannulrun=tannulrun,PE=PE,KS=KS,BB=BB,BD=BD,L=L,LAI=LAI)
+        micro<-list(dim=dim,tides=tides,microinput=microinput,julday=julday,SLES=SLES,DEP=DEP,Intrvls=Intrvls,Nodes=Nodes,MAXSHADES=MAXSHADES,MINSHADES=MINSHADES,TIMAXS=TIMAXS,TIMINS=TIMINS,TMAXX=TMAXX,TMINN=TMINN,RHMAXX=RHMAXX,RHMINN=RHMINN,CCMAXX=CCMAXX,CCMINN=CCMINN,WNMAXX=WNMAXX,WNMINN=WNMINN,SNOW=SNOW,REFLS=REFLS,PCTWET=PCTWET,soilinit=soilinit,hori=hori,TAI=TAI,soilprops=soilprops,moists=moists,RAINFALL=RAINFALL,tannulrun=tannulrun,PE=PE,KS=KS,BB=BB,BD=BD,L=L,LAI=LAI)
         
         # write all input to csv files in their own folder
         if(write_input==1){
@@ -765,7 +764,7 @@ NicheMapR <- function(niche) {
         # 3-12 D0cm ... - soil temperatures at each of the 10 specified depths
         
         
-        return(list(soil=soil,shadsoil=shadsoil,metout=metout,shadmet=shadmet,soilmoist=soilmoist,shadmoist=shadmoist,humid=humid,shadhumid=shadhumid,soilpot=soilpot,shadpot=shadpot,RAINFALL=RAINFALL,ALTT=ALTT,REFL=REFL[1],fieldcap=fieldcap,wilting=wilting,MAXSHADES=MAXSHADES,longlat=c(x[1],x[2]),ndays=ndays))
+        return(list(soil=soil,shadsoil=shadsoil,metout=metout,shadmet=shadmet,soilmoist=soilmoist,shadmoist=shadmoist,humid=humid,shadhumid=shadhumid,soilpot=soilpot,shadpot=shadpot,RAINFALL=RAINFALL,ALTT=ALTT,REFL=REFL[1],fieldcap=fieldcap,wilting=wilting,MAXSHADES=MAXSHADES,longlat=c(x[1],x[2]),dim=dim))
         
       } # end of check for na sites
     } # end of check if soil data is being used but no soil data returned

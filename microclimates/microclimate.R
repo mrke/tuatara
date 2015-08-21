@@ -25,7 +25,7 @@ spatial<-"/Spatial_Data/Climate/New Zealand/weather/" # place where climate inpu
 mac<-0
 
 ############## location and climatic data  ###################################
-sitemethod <- 1 # 0=specified single site long/lat, 1=place name search using geodis (needs internet)
+sitemethod <- 0 # 0=specified single site long/lat, 1=place name search using geodis (needs internet)
 longlat<-c(173.82,-40.823) # Stephens Island: c(173.82,-40.823)
 loc <- "Arthurs Pass, New Zealand" # type in a location here, used if option 1 is chosen above
 terrain<-0 # include terrain (slope, aspect, horizon angles) (1) or not (0)?
@@ -87,7 +87,7 @@ snowtemp<-1.5 # temperature at which precipitation falls as snow (used for snow 
 snowdens<-0.325 # snow density (mg/m3)
 snowmelt<-1 # proportion of calculated snowmelt that doesn't refreeze
 undercatch<-1.2 # undercatch multipier for converting rainfall to snow
-rainmelt<-0.013 # paramter in equation that melts snow with rainfall as a function of air tempwrite_input<-1 # write csv files of final input to working directory? 1=yes, 0=no.
+rainmelt<-0.013 # paramter in equation that melts snow with rainfall as a function of air temp.
 warm<-0 # uniform warming of air temperature input to simulate climate change
 loop<-0 # if doing multiple years, this shifts the starting year by the integer value
 write_input<-0 # write csv files of final input to working directory? 1=yes, 0=no.
@@ -105,49 +105,76 @@ leap1<-(format(dates2, "%m/%d")!= "02/29") # used for removing leap years
 leap2<-(format(dates, "%m/%d")!= "02/29") # used for removing leap years
 
 # get output
-metout<-as.data.frame(nicheout$metout[1:(ndays*24),]) # above ground microclimatic conditions, min shade
-shadmet<-as.data.frame(nicheout$shadmet[1:(ndays*24),]) # above ground microclimatic conditions, max shade
-soil<-as.data.frame(nicheout$soil[1:(ndays*24),]) # soil temperatures, minimum shade
-shadsoil<-as.data.frame(nicheout$shadsoil[1:(ndays*24),]) # soil temperatures, maximum shade
-soilmoist<-as.data.frame(nicheout$soilmoist[1:(ndays*24),]) # soil water content, minimum shade
-shadmoist<-as.data.frame(nicheout$shadmoist[1:(ndays*24),]) # soil water content, maximum shade
-humid<-as.data.frame(nicheout$humid[1:(ndays*24),]) # soil humidity, minimum shade
-shadhumid<-as.data.frame(nicheout$shadhumid[1:(ndays*24),]) # soil humidity, maximum shade
-soilpot<-as.data.frame(nicheout$soilpot[1:(ndays*24),]) # soil water potential, minimum shade
-shadpot<-as.data.frame(nicheout$shadpot[1:(ndays*24),]) # soil water potential, maximum shade
+dim<-nicheout$dim
+metout<-as.data.frame(nicheout$metout[1:(dim*24),]) # above ground microclimatic conditions, min shade
+shadmet<-as.data.frame(nicheout$shadmet[1:(dim*24),]) # above ground microclimatic conditions, max shade
+soil<-as.data.frame(nicheout$soil[1:(dim*24),]) # soil temperatures, minimum shade
+shadsoil<-as.data.frame(nicheout$shadsoil[1:(dim*24),]) # soil temperatures, maximum shade
+soilmoist<-as.data.frame(nicheout$soilmoist[1:(dim*24),]) # soil water content, minimum shade
+shadmoist<-as.data.frame(nicheout$shadmoist[1:(dim*24),]) # soil water content, maximum shade
+humid<-as.data.frame(nicheout$humid[1:(dim*24),]) # soil humidity, minimum shade
+shadhumid<-as.data.frame(nicheout$shadhumid[1:(dim*24),]) # soil humidity, maximum shade
+soilpot<-as.data.frame(nicheout$soilpot[1:(dim*24),]) # soil water potential, minimum shade
+shadpot<-as.data.frame(nicheout$shadpot[1:(dim*24),]) # soil water potential, maximum shade
 rainfall<-as.data.frame(nicheout$RAINFALL)
 MAXSHADES<-as.data.frame(nicheout$MAXSHADES)
 elev<-as.numeric(nicheout$ALTT)
 REFL<-as.numeric(nicheout$REFL)
 longlat<-as.matrix(nicheout$longlat)
-fieldcap<-as.numeric(nicheout$fieldcap)
-wilting<-0.11 # soil moisture at node 3 that means no food available
-ectoin<-c(elev,REFL,as.numeric(longlat[1]),as.numeric(longlat[2]),fieldcap,wilting,ystart,yfinish)
-longlat<-nicheout$longlat
+ectoin<-rbind(elev,REFL,longlat,0,0,1990,1990+nyears-1)
 
-# write ouput for ectotherm model (note, removing leap years because at the moment the ectotherm model doesn't handle them)
-write.csv(metout[leap2,],'microclimates/micro output/metout.csv')
-write.csv(shadmet[leap2,],'microclimates/micro output/shadmet.csv')
-write.csv(soil[leap2,],'microclimates/micro output/soil.csv')
-write.csv(shadsoil[leap2,],'microclimates/micro output/shadsoil.csv')
-write.csv(rainfall[leap1,],'microclimates/micro output/rainfall.csv')
+# removing leap years because at the moment the ectotherm model doesn't handle them
+metout<-metout[leap2,]
+shadmet<-shadmet[leap2,]
+soil<-soil[leap2,]
+shadsoil<-shadsoil[leap2,]
+soilmoist<-soilmoist[leap2,]
+shadmoist<-shadmoist[leap2,]
+humid<-humid[leap2,]
+shadhumid<-shadhumid[leap2,]
+soilpot<-soilpot[leap2,]
+shadpot<-shadpot[leap2,]
+rainfall<-rainfall[leap1,]
+
+# write ouput for ectotherm model
+write.csv(metout,'microclimates/micro output/metout.csv')
+write.csv(shadmet,'microclimates/micro output/shadmet.csv')
+write.csv(soil,'microclimates/micro output/soil.csv')
+write.csv(shadsoil,'microclimates/micro output/shadsoil.csv')
+write.csv(soilmoist,'microclimates/micro output/soilmoist.csv')
+write.csv(shadmoist,'microclimates/micro output/shadmoist.csv')
+write.csv(soilpot,'microclimates/micro output/soilpot.csv')
+write.csv(shadpot,'microclimates/micro output/shadpot.csv')
+write.csv(humid,'microclimates/micro output/humid.csv')
+write.csv(shadhumid,'microclimates/micro output/shadhumid.csv')
+write.csv(rainfall,'microclimates/micro output/rainfall.csv')
 write.csv(ectoin,'microclimates/micro output/ectoin.csv')
 write.csv(DEP,'microclimates/micro output/DEP.csv')
 write.csv(MAXSHADES,'microclimates/micro output/MAXSHADES.csv')
 
-metout<-cbind(dates,metout)
-shadmet<-cbind(dates,shadmet)
-soil<-cbind(dates,soil)
-shadsoil<-cbind(dates,shadsoil)
-soilmoist<-cbind(dates,soilmoist)
-shadmoist<-cbind(dates,shadmoist)
-humid<-cbind(dates,humid)
-shadhumid<-cbind(dates,shadhumid)
-soilpot<-cbind(dates,soilpot)
-shadpot<-cbind(dates,shadpot)
+metout<-cbind(dates[leap2],metout)
+shadmet<-cbind(dates[leap2],shadmet)
+soil<-cbind(dates[leap2],soil)
+shadsoil<-cbind(dates[leap2],shadsoil)
+soilmoist<-cbind(dates[leap2],soilmoist)
+shadmoist<-cbind(dates[leap2],shadmoist)
+humid<-cbind(dates[leap2],humid)
+shadhumid<-cbind(dates[leap2],shadhumid)
+soilpot<-cbind(dates[leap2],soilpot)
+shadpot<-cbind(dates[leap2],shadpot)
 
-rainfall<-as.data.frame(cbind(dates2,rainfall))
+rainfall<-as.data.frame(cbind(dates2[leap1],rainfall))
 colnames(rainfall)<-c('dates','rainfall')
+colnames(metout)[1]<-"dates"
+colnames(shadmet)[1]<-"dates"
+colnames(soil)[1]<-"dates"
+colnames(shadsoil)[1]<-"dates"
+colnames(soilmoist)[1]<-"dates"
+colnames(shadmoist)[1]<-"dates"
+colnames(humid)[1]<-"dates"
+colnames(shadhumid)[1]<-"dates"
+colnames(soilpot)[1]<-"dates"
+colnames(shadpot)[1]<-"dates"
 
 dstart<-as.POSIXct(as.Date(paste('01/01/',ystart,sep=""), "%d/%m/%Y"))-3600*11
 dfinish<-as.POSIXct(as.Date(paste('31/12/',yfinish,sep=""), "%d/%m/%Y"))-3600*10
